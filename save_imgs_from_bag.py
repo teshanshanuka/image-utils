@@ -3,6 +3,8 @@
 
 # Copyright 2016 Massachusetts Institute of Technology
 
+# Quick delete a class -> for F in */*.txt; do sed -i '/^0/d' $F; done
+
 """
 Save images from a rosbag
 """
@@ -32,9 +34,9 @@ def extract(bag, topics, op_dir):
     bag = rosbag.Bag(bag, "r")
 
     info = bag.get_type_and_topic_info()
-    if not all(topic in info.topics.keys() for topic in topics):
-        print("Topics not available in bag. Available topics: {}".format(info.topics.keys()))
-        return
+    # if not all(topic in info.topics.keys() for topic in topics):
+    #     print("Topics not available in bag. Available topics: {}".format(info.topics.keys()))
+    #     return
 
     bridge = CvBridge()
     count = {topic: 0 for topic in topics}
@@ -69,6 +71,10 @@ if __name__ == "__main__":
         "/small_hauler_2/camera/right/image_raw/compressed": "right_h2",
         "/small_hauler_3/camera/left/image_raw/compressed": "left_h3",
         "/small_hauler_3/camera/right/image_raw/compressed": "right_h3",
+        "/small_scout_1/camera/left/image_raw/compressed": "left_s1",
+        "/small_scout_1/camera/right/image_raw/compressed": "right_s1",
+        "/small_scout_2/camera/left/image_raw/compressed": "left_s2",
+        "/small_scout_2/camera/right/image_raw/compressed": "right_s2"
     }
 
     extract(bag_, topics_, op_dir_)
