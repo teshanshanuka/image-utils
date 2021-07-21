@@ -74,7 +74,9 @@ if __name__ == "__main__":
         "/small_scout_1/camera/left/image_raw/compressed": "left_s1",
         "/small_scout_1/camera/right/image_raw/compressed": "right_s1",
         "/small_scout_2/camera/left/image_raw/compressed": "left_s2",
-        "/small_scout_2/camera/right/image_raw/compressed": "right_s2"
+        "/small_scout_2/camera/right/image_raw/compressed": "right_s2",
+        "/small_excavator_1/camera/left/image_raw/compressed": "left_e1",
+        "/small_excavator_1/camera/right/image_raw/compressed": "right_e1"
     }
 
     extract(bag_, topics_, op_dir_)

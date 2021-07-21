@@ -18,10 +18,10 @@ INSTRUCTIONS = """
 'u'         - toggle marked box (if not tracking)
 'l'         - delete annotation of marked box
 'q'         - quit
-'12346789'  - change marked box size
+'m,.jluio'  - change marked box size
 'wasd'      - move marked box
-'5'         - toggle expand/shrink box
-'+-'        - increase/decrease box size change step
+'='         - toggle expand/shrink box
+'[]'        - increase/decrease box size change step
 't'         - toggle class
 'c'         - clear marked box
 'r'         - restart
@@ -44,7 +44,7 @@ def get_tracker(tracker):
         }
         return OPENCV_OBJECT_TRACKERS[tracker]()
 
-def drawBBox(frame, box, color=(0, 255, 0), thickness=2, text=""):
+def drawBBox(frame, box, color=(0, 255, 0), thickness=1, text=""):
     assert len(box) == 4, "box should be a tuple of length 4"
     H, W = frame.shape[:2]
     x, y, w, h = [int(v) for v in box]
@@ -152,7 +152,28 @@ def parse_data(data_file, img_height, img_width):
 def random_color():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
 
+
+def move_box(box, new_pos):
+    (x, y, w, h) = [int(v) for v in box]
+    nx, ny = new_pos
+
+    x = max(nx-w//2, 0)
+    y = max(ny-h//2, 0)
+
+    return (x, y, w, h)
+
+
+def onMouse(event, x, y, flags, param):
+   global glob_box
+   if event == cv2.EVENT_LBUTTONDOWN:
+       new_box_pos = x, y
+
+
+new_box_pos = None
+
+
 def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png"):
+    global new_box_pos
     tracker = None
 
     imgs = [f for f in filter(lambda x: x.endswith(img_format), os.listdir(folder))]
@@ -162,6 +183,7 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
         classes = fd.read().strip().split('\n')
 
     cv2.namedWindow('img')
+    cv2.setMouseCallback("img", onMouse)
 
     imgs.sort()
     frames = [cv2.imread(os.path.join(folder,f)) for f in imgs]
@@ -173,7 +195,7 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
     print(INSTRUCTIONS)
 
     print("Classes:", classes)
-    step = 10
+    step = 3
 
     while not quit:
         img_data = [f for f in os.listdir(folder) if f.endswith(".txt")]
@@ -228,6 +250,11 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
 
             while True:
                 frame = base_frame.copy()
+                if new_box_pos is not None and box is not None:
+                    print("moving")
+                    box = move_box(box, new_box_pos)
+                    new_box_pos = None
+
                 if box is not None:
                     drawBBox(frame, box, text=classes[select_class])
 
@@ -291,21 +318,21 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                     if img_data:
                         marked_box = prev_marked_box = (marked_box - 1) % len(img_data)
 
-                elif key == ord("1"):
+                elif key == ord("m"):
                     update = "BL"
-                elif key == ord("2"):
+                elif key == ord(","):
                     update = "B"
-                elif key == ord("3"):
+                elif key == ord("."):
                     update = "BR"
-                elif key == ord("6"):
+                elif key == ord("l"):
                     update = "R"
-                elif key == ord("9"):
+                elif key == ord("o"):
                     update = "TR"
-                elif key == ord("8"):
+                elif key == ord("i"):
                     update = "T"
-                elif key == ord("7"):
+                elif key == ord("u"):
                     update = "TL"
-                elif key == ord("4"):
+                elif key == ord("j"):
                     update = "L"
                 elif key == ord("w"):
                     update = "u"
@@ -316,11 +343,11 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                 elif key == ord("d"):
                     update = "r"
 
-                elif key == ord("+"):
+                elif key == ord("0"):
                     step += 1
-                elif key == ord("-"):
+                elif key == ord("9"):
                     step -= 1
-                elif key == ord("5"):
+                elif key == ord("k"):
                     step = -step
 
                 if update and box is not None:
@@ -348,6 +375,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         classes = sys.argv[2]
 
-    track(folder, classes, img_format='.png')
+    track(folder, classes, tracker_="medianflow", img_format='.png') # mil
     # close all windows
     cv2.destroyAllWindows()
