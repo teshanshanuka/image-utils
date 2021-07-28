@@ -13,17 +13,17 @@ import re
 INSTRUCTIONS = """
 ***Image annotation by object tracking for YOLO training***
 'e'         - start tracking
-'n'         - next image
-'b'         - previous image
-'u'         - toggle marked box (if not tracking)
+'c'         - next image
+'z'         - previous image
+'o'         - toggle marked box (if not tracking)
 'l'         - delete annotation of marked box
 'q'         - quit
-'m,.jluio'  - change marked box size
+'yuihjknm,'  - change marked box size
 'wasd'      - move marked box
-'='         - toggle expand/shrink box
+'j'         - toggle expand/shrink box
 '[]'        - increase/decrease box size change step
 't'         - toggle class
-'c'         - clear marked box
+'x'         - clear marked box
 'r'         - restart
 """
 
@@ -74,37 +74,36 @@ def update_box(box, update, step):
         x += abs(step)
     return (x, y, w, h)
 
-def save_data(class_, box, data_file, img_height, img_width, tol=5):
-    for i in range(1):
-        if box is not None:
-            x, y, w, h = box
-            if x >= img_width or y >= img_height:
-                box = None
-                break
-            if x + w > img_width:
-                w = img_width - x
-            if y + h > img_height:
-                h = img_height - y
-            if x < 0:
-                w += x
-                x = 0
-            if y < 0:
-                h += y
-                y = 0
-            if w < tol or h < tol:
-                box = None
-                break
-            x, y, w, h = x/img_width, y/img_height, w/img_width, h/img_height
-            x += w/2
-            y += h/2
-        if box is None or w == 0. or h == 0.:
-            box = None
-            break
-    with open(data_file, 'a') as fd:
-        if box is not None:
+def to_yolo_annot(box, img_height, img_width, tol):
+    x, y, w, h = box
+    if x >= img_width or y >= img_height:
+        return
+    if x + w > img_width:
+        w = img_width - x
+    if y + h > img_height:
+        h = img_height - y
+    if x < 0:
+        w += x
+        x = 0
+    if y < 0:
+        h += y
+        y = 0
+    if w < tol or h < tol:
+        return
+    x, y, w, h = x/img_width, y/img_height, w/img_width, h/img_height
+    x += w/2
+    y += h/2
+    if box is None or w == 0. or h == 0.:
+        return
+    return x, y, w, h
+
+def append_data(class_, box, data_file, img_height, img_width, tol=5):
+    box = to_yolo_annot(box, img_height, img_width, tol)
+    if box is not None:
+        x, y, w, h = box
+        with open(data_file, 'a') as fd:
             w_str = "{} {:.6f} {:.6f} {:.6f} {:.6f}\n".format(class_, x, y, w, h)
             fd.write(w_str)
-    if box is not None:
         return w_str
 
 def del_line(file, line_no):
@@ -119,6 +118,7 @@ def del_line(file, line_no):
         if t:
             fd.write('\n'.join(t) + '\n')
     # print("new str: {}".format('\n'.join(t[:-1]) + '\n'))
+
 
 def edit_class(file, line_no, new_class):
     assert file.endswith(".txt"), "File is not a .txt"
@@ -148,6 +148,17 @@ def parse_data(data_file, img_height, img_width):
             d['box'] = tuple(box)
             data.append(d)
     return data
+
+
+def save_data(data, data_file, img_height, img_width, tol=5):
+    s = ""
+    for d in data:
+        x, y, w, h = to_yolo_annot(d['box'], img_height, img_width, tol)
+        s += "{} {:.6f} {:.6f} {:.6f} {:.6f}\n".format(d['class'], x, y, w, h)
+    if s:
+        with open(data_file, 'w') as fp:
+            fp.write(s)
+    # print(f"Wrote:\n{s}")
 
 def random_color():
     return (random.randint(0,255), random.randint(0,255), random.randint(0,255))
@@ -195,7 +206,7 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
     print(INSTRUCTIONS)
 
     print("Classes:", classes)
-    step = 3
+    step = 5
 
     while not quit:
         img_data = [f for f in os.listdir(folder) if f.endswith(".txt")]
@@ -208,15 +219,16 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
         warn = ""
         marked_box = prev_marked_box = 10
 
-        while img_idx < len(imgs):
+        while img_idx < len(imgs):  # For images
             frame, img = frames[img_idx], imgs[img_idx]
             txt_file = os.path.join(folder, img.split('.')[0] + ".txt")
 
             (H, W) = frame.shape[:2]
             text = "Frame {}/{}".format(img_idx+1, len(frames))
             update = ""
-            rand_color = random_color()
+            existing_annot_color = (200, 220, 90)
             orig_frame = frame.copy()
+            modified_annot = False
 
             cv2.putText(frame, text, (10, H-20), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
             cv2.putText(frame, img, (10, H-40), cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
@@ -248,7 +260,7 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                     print("Lost tracking")
                     box = None
 
-            while True:
+            while True:  # This image
                 frame = base_frame.copy()
                 if new_box_pos is not None and box is not None:
                     print("moving")
@@ -262,13 +274,14 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                     for i, data in enumerate(img_data):
                         e_box = data['box']
                         e_class = classes[data['class']]
-                        drawBBox(frame, e_box, color=rand_color, text=e_class, thickness=1)
+                        drawBBox(frame, e_box, color=existing_annot_color, text=e_class, thickness=1)
                         if i == marked_box:
-                            cv2.circle(frame, e_box[:2], 5, rand_color, -1)
+                            cv2.circle(frame, e_box[:2], 5, existing_annot_color, -1)
 
                 cv2.imshow('img', frame)
                 key = cv2.waitKey(1) & 0xFF
 
+                # new
                 if key == ord("e"):
                     box = cv2.selectROI("img", frame, fromCenter=False, showCrosshair=True)
                     tracker = get_tracker(tracker_)
@@ -277,26 +290,34 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                     frame = base_frame.copy()
                     drawBBox(frame, box)
 
-                elif key == ord("n"):
-                    box_str = save_data(select_class, box, txt_file, H, W)
+                # next
+                elif key == ord("c"):
+                    if box is not None:
+                        append_data(select_class, box, txt_file, H, W)
+                    elif modified_annot:
+                        save_data(img_data, txt_file, H, W)
                     img_idx += 1
                     marked_box = prev_marked_box
                     break
 
-                elif key == ord("b"):
+                # prev
+                elif key == ord("z"):
                     img_idx = (img_idx - 1) % len(imgs)
                     box = None
                     marked_box = prev_marked_box
                     break
 
+                # reset
                 elif key == ord("r"):
                     restart = True
                     break
 
+                # quit
                 elif key == ord("q"):
                     quit = True
                     break
 
+                # toggle
                 elif key == ord("t"):
                     if box is not None:
                         select_class = (select_class + 1) % len(classes)
@@ -304,7 +325,7 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                         img_data[marked_box]['class'] = (img_data[marked_box]['class'] + 1) % len(classes)
                         edit_class(txt_file, marked_box, img_data[marked_box]['class'])
 
-                elif key == ord("c"):
+                elif key == ord("x"):
                     box = None
 
                 elif key == ord("l"):
@@ -314,25 +335,25 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                         del_line(txt_file, marked_box)
                         marked_box = (marked_box - 1) % len(img_data) if img_data else 0
 
-                elif key == ord("u"):
+                elif key == ord("o"):
                     if img_data:
                         marked_box = prev_marked_box = (marked_box - 1) % len(img_data)
 
-                elif key == ord("m"):
+                elif key == ord("n"):
                     update = "BL"
-                elif key == ord(","):
+                elif key == ord("m"):
                     update = "B"
-                elif key == ord("."):
+                elif key == ord(","):
                     update = "BR"
-                elif key == ord("l"):
+                elif key == ord("k"):
                     update = "R"
-                elif key == ord("o"):
-                    update = "TR"
                 elif key == ord("i"):
-                    update = "T"
+                    update = "TR"
                 elif key == ord("u"):
+                    update = "T"
+                elif key == ord("y"):
                     update = "TL"
-                elif key == ord("j"):
+                elif key == ord("h"):
                     update = "L"
                 elif key == ord("w"):
                     update = "u"
@@ -347,17 +368,22 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                     step += 1
                 elif key == ord("9"):
                     step -= 1
-                elif key == ord("k"):
+                elif key == ord("j"):
                     step = -step
 
-                if update and box is not None:
-                    box = update_box(box, update, step)
-                    frame = base_frame.copy()
-                    drawBBox(frame, box)
-                    tracker.clear()
+                if update:
+                    if box is not None:  # We are tracking
+                        box = update_box(box, update, step)
+                        frame = base_frame.copy()
+                        drawBBox(frame, box)
+                        tracker.clear()
 
-                    tracker = get_tracker(tracker_)
-                    tracker.init(orig_frame, box)
+                        tracker = get_tracker(tracker_)
+                        tracker.init(orig_frame, box)
+                    elif img_data:  # Modified existing annot
+                            selected_annot = img_data[marked_box]
+                            selected_annot['box'] = update_box(selected_annot['box'], update, step)
+                            modified_annot = True
                 update = ""
 
                 # if key != 255: print(key)
