@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+# Author: Teshan Liyanage <teshanuka@gmail.com>
+
 from imutils.video import FPS
 import argparse
 import imutils
@@ -15,10 +17,10 @@ INSTRUCTIONS = """
 'e'         - start tracking
 'c'         - next image
 'z'         - previous image
-'o'         - toggle marked box (if not tracking)
-'l'         - delete annotation of marked box
+'p'         - toggle marked box class (if not tracking)
+';'         - delete annotation of marked box
 'q'         - quit
-'yuihjknm,'  - change marked box size
+'yuihknm,'  - change marked box size
 'wasd'      - move marked box
 'j'         - toggle expand/shrink box
 '[]'        - increase/decrease box size change step
@@ -35,12 +37,7 @@ def get_tracker(tracker):
     else:
         OPENCV_OBJECT_TRACKERS = {
         	"csrt": cv2.TrackerCSRT_create,
-        	"kcf": cv2.TrackerKCF_create,
-        	"boosting": cv2.TrackerBoosting_create,
-        	"mil": cv2.TrackerMIL_create,
-        	"tld": cv2.TrackerTLD_create,
-        	"medianflow": cv2.TrackerMedianFlow_create,
-        	"mosse": cv2.TrackerMOSSE_create
+        	"kcf": cv2.TrackerKCF_create
         }
         return OPENCV_OBJECT_TRACKERS[tracker]()
 
@@ -328,14 +325,14 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                 elif key == ord("x"):
                     box = None
 
-                elif key == ord("l"):
+                elif key == ord(";"):
                     if img_data:
                         prev_marked_box = marked_box
                         del img_data[marked_box]
                         del_line(txt_file, marked_box)
                         marked_box = (marked_box - 1) % len(img_data) if img_data else 0
 
-                elif key == ord("o"):
+                elif key == ord("p"):
                     if img_data:
                         marked_box = prev_marked_box = (marked_box - 1) % len(img_data)
 
@@ -376,7 +373,7 @@ def track(folder=".", class_file="obj.names", tracker_="kcf", img_format=".png")
                         box = update_box(box, update, step)
                         frame = base_frame.copy()
                         drawBBox(frame, box)
-                        tracker.clear()
+                        # tracker.clear()
 
                         tracker = get_tracker(tracker_)
                         tracker.init(orig_frame, box)
@@ -401,6 +398,6 @@ if __name__ == "__main__":
     if len(sys.argv) > 2:
         classes = sys.argv[2]
 
-    track(folder, classes, tracker_="medianflow", img_format='.png') # mil
+    track(folder, classes, tracker_="csrt", img_format='.png') # mil
     # close all windows
     cv2.destroyAllWindows()

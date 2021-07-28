@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-# Copyright 2016 Massachusetts Institute of Technology
+# Author: Teshan Liyanage <teshanuka@gmail.com>
 
 # Quick delete a class -> for F in */*.txt; do sed -i '/^0/d' $F; done
 
@@ -80,23 +80,3 @@ if __name__ == "__main__":
     }
 
     extract(bag_, topics_, op_dir_)
-
-    # if len(sys.argv) < 3:
-    #     print("Usage: {} <image folder> <output folder>".format(sys.argv[0]))
-    #     sys.exit()
-    # bag = 'catkin_ws_05/2019-07-24-16-28-20.bag'
-    # op_dir = bag.split('/')[-1].split('.')[0]
-    # op_subdirs = {topic: topic.split("/")[-1] for topic in topics}
-
-    # for folder in filter(
-    #     os.path.isdir,
-    #     map(lambda x: os.path.join(sys.argv[1], x), os.listdir(sys.argv[1])),
-    # ):
-    #     print(folder)
-    #     for bagfile in filter(lambda x: x.endswith(".bag"), os.listdir(folder)):
-    #         bag = os.path.join(folder, bagfile)
-    #         op_dir = os.path.join(sys.argv[2], bag.split("/")[-1].split(".")[0])
-    #         print(bag, op_dir)
-    #         main(bag, topics, op_dir)
-
-    # main(bag, topics, op_dir, op_subdirs)

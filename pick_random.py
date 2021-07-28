@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+# Author: Teshan Liyanage <teshanuka@gmail.com>
+
 """
 Select some random images
 """
@@ -29,7 +31,7 @@ def copy_img_with_marking(img, op_folder):
 
 if __name__ == "__main__":
     if len(sys.argv) < 4:
-        print("Usage: {} <folder> <output folder> <#images to pick> <bad output folder>".format(sys.argv[0]))
+        print("Usage: {} <folder> <output folder> <#images to pick> [<folder for the rest>]".format(sys.argv[0]))
         sys.exit(1)
     folder = sys.argv[1]
     out_folder = sys.argv[2]
@@ -43,12 +45,9 @@ if __name__ == "__main__":
     imgs = []
     img_bases = []
     for subf in os.walk(folder, topdown=True):
-        # if subf[0].endswith("image_raw"):
         for f in subf[2]:
             if f.endswith(ext):
                 txt = os.path.splitext(f)[0] + ".txt"
-                # if f in img_bases:
-                #     raise RuntimeError(f"{f} already found")
                 img_bases.append(f)
 
                 with open(os.path.join(subf[0], txt), 'r') as fd:

@@ -1,5 +1,7 @@
 #!/usr/bin/python3
 
+# Author: Teshan Liyanage <teshanuka@gmail.com>
+
 """
 From consecutive frames of a video, select significantly different images and put them into
 a seperate folder
